@@ -1,0 +1,13 @@
+{
+  "version": 1,
+  "skills": {
+    "open-data-observatory-v1": {
+      "source": "../skills/data-obs",
+      "sourceType": "local"
+    },
+    "research-director": {
+      "source": "../skills/research-director",
+      "sourceType": "local"
+    }
+  }
+}

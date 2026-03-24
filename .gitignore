@@ -1,0 +1,13 @@
+# Raw data cache (too large, may have license restrictions)
+outputs/raw/
+*.csv
+*.xlsx
+*.parquet
+
+# Local env
+.env
+.env.local
+
+# OS
+.DS_Store
+Thumbs.db
