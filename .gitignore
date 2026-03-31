@@ -1,13 +1,33 @@
-# Raw data cache (too large, may have license restrictions)
-outputs/raw/
-*.csv
-*.xlsx
-*.parquet
+# ── Runtime data — never committed ──────────────────────────────────────────
+# Downloaded datasets
+data/
 
-# Local env
+# Generated pipeline outputs (charts, tables, pipelines, notebooks)
+artifacts/
+
+# SQLite database — runtime state, differs per user.
+# Initialize fresh: python scripts/init_db.py
+observatory.db
+
+# ── Python ───────────────────────────────────────────────────────────────────
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+.venv/
+venv/
+
+# ── Environment ──────────────────────────────────────────────────────────────
 .env
 .env.local
 
-# OS
+# ── IDE ──────────────────────────────────────────────────────────────────────
+.vscode/
+.idea/
+
+# ── OS ───────────────────────────────────────────────────────────────────────
 .DS_Store
 Thumbs.db
+
+# ── Jupyter ──────────────────────────────────────────────────────────────────
+.ipynb_checkpoints/

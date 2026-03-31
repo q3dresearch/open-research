@@ -1,0 +1,23 @@
+# Core
+pandas>=2.0
+numpy>=1.24
+
+# Notebooks
+jupyter>=1.0
+papermill>=2.4
+nbformat>=5.9
+
+# Charts
+matplotlib>=3.7
+seaborn>=0.12
+
+# LLM
+anthropic>=0.40
+
+# HTTP
+httpx>=0.25
+tenacity>=8.2
+
+# Testing
+pytest>=7.4
+ruff>=0.1

@@ -1,0 +1,18 @@
+# Ingest queue — paste dataset URLs here for the pipeline to pick up.
+# The scout agent reads this file and registers new datasets in observatory.db.
+#
+# Format:
+#   - url: https://data.gov.sg/datasets/<dataset_id>/view
+#     notes: optional human notes
+#
+# After processing, the scout moves entries to the 'processed' section below.
+
+queue:
+  - url: https://data.gov.sg/datasets/d_8b84c4ee58e3cfc0ece0d773c8ca6abc/view
+    notes: HDB resale flat prices, Jan 2017 onwards. Monthly update.
+
+# processed:
+#   - url: https://data.gov.sg/datasets/d_8b84c4ee58e3cfc0ece0d773c8ca6abc/view
+#     dataset_id: d_8b84c4ee58e3cfc0ece0d773c8ca6abc
+#     vetted_at: 2026-03-25
+#     verdict: pass
