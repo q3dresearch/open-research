@@ -1,0 +1,1151 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Complete reference for all seven pipeline phases">
+      
+      
+      
+        <link rel="canonical" href="https://q3dresearch.github.io/open-research/phases/">
+      
+      
+        <link rel="prev" href="../architecture/">
+      
+      
+        <link rel="next" href="../guides/running-locally/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../assets/favicon_package_v0.16/favicon-32x32.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.6">
+    
+    
+      
+        <title>Phase Reference - q3d Open Research</title>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/stylesheets/main.484c7ddc.min.css">
+      
+        
+        <link rel="stylesheet" href="../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#phase-reference" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+<header class="md-header" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href=".." title="q3d Open Research" class="md-header__button md-logo" aria-label="q3d Open Research" data-md-component="logo">
+      
+  <img src="../assets/qed-mark-white.png" alt="logo">
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            q3d Open Research
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Phase Reference
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-hidden="true"  type="radio" name="__palette" id="__palette_0">
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/q3dresearch/open-research" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    q3dresearch/open-research
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+            
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href=".." class="md-tabs__link">
+        
+  
+  
+    
+  
+  Home
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../architecture/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Architecture
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+    
+  
+  
+    <li class="md-tabs__item md-tabs__item--active">
+      <a href="./" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Phases
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../guides/running-locally/" class="md-tabs__link">
+          
+  
+  
+  Guides
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../reference/pipeline-types/" class="md-tabs__link">
+          
+  
+  
+  Reference
+
+        </a>
+      </li>
+    
+  
+
+      
+    </ul>
+  </div>
+</nav>
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+  
+
+<nav class="md-nav md-nav--primary md-nav--lifted md-nav--integrated" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href=".." title="q3d Open Research" class="md-nav__button md-logo" aria-label="q3d Open Research" data-md-component="logo">
+      
+  <img src="../assets/qed-mark-white.png" alt="logo">
+
+    </a>
+    q3d Open Research
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/q3dresearch/open-research" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    q3dresearch/open-research
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href=".." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../architecture/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Architecture
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Phases
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Phases
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#phase-registry" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Phase registry
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#00-vet" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        00 — vet
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#10-eda" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        10 — eda
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#15-clean" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        15 — clean
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#20-engineer" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        20 — engineer
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#25-cluster" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        25 — cluster
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#30-select" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        30 — select
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#50-report" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        50 — report
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Guides
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Guides
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../guides/running-locally/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Running Locally
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../guides/loading-datasets/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Loading Datasets
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../guides/human-notes/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Human Notes
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Reference
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Reference
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../reference/pipeline-types/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Pipeline Types
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../reference/artifacts/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Artifacts
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../reference/phase-registry/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Phase Registry
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../reference/prompts/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Prompts
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="phase-reference">Phase Reference<a class="headerlink" href="#phase-reference" title="Permanent link">&para;</a></h1>
+<p>All phases derive their constants from <code>lib/artifacts.py:ACTIONS</code>. Never hardcode action codes.</p>
+<h2 id="phase-registry">Phase registry<a class="headerlink" href="#phase-registry" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code><span class="n">ACTIONS</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="s2">&quot;00&quot;</span><span class="p">:</span> <span class="s2">&quot;vet&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;10&quot;</span><span class="p">:</span> <span class="s2">&quot;eda&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;15&quot;</span><span class="p">:</span> <span class="s2">&quot;clean&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;20&quot;</span><span class="p">:</span> <span class="s2">&quot;engineer&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;25&quot;</span><span class="p">:</span> <span class="s2">&quot;cluster&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;30&quot;</span><span class="p">:</span> <span class="s2">&quot;select&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;50&quot;</span><span class="p">:</span> <span class="s2">&quot;report&quot;</span><span class="p">,</span>
+<span class="p">}</span>
+</code></pre></div>
+<p>Gaps of 10 between codes allow inserting new phases without renumbering.</p>
+<hr />
+<h2 id="00-vet">00 — vet<a class="headerlink" href="#00-vet" title="Permanent link">&para;</a></h2>
+<p><strong>Agent</strong>: <code>agents/vetter.py</code> | <strong>Prompt</strong>: <code>research-00-vet</code></p>
+<p>Schema quality gate. LLM judges dataset metadata + 500-row EDA profile.</p>
+<p><strong>Flags set on pass</strong>: <code>schema_vetted</code></p>
+<p><strong>LLM response</strong>:
+<div class="highlight"><pre><span></span><code><span class="p">{</span>
+<span class="w">  </span><span class="nt">&quot;verdict&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;pass | fail&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;pipeline_type&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;transactional | aggregate | reference&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;score&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">8</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;reason&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;...&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;research_angles&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;...&quot;</span><span class="p">],</span>
+<span class="w">  </span><span class="nt">&quot;concerns&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;...&quot;</span><span class="p">],</span>
+<span class="w">  </span><span class="nt">&quot;join_keys&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;...&quot;</span><span class="p">]</span>
+<span class="p">}</span>
+</code></pre></div></p>
+<p><code>pipeline_type</code> determines which phases run downstream. See <a href="../reference/pipeline-types/">Pipeline Types</a>.</p>
+<hr />
+<h2 id="10-eda">10 — eda<a class="headerlink" href="#10-eda" title="Permanent link">&para;</a></h2>
+<p><strong>Agent</strong>: <code>agents/analyst.py</code> | <strong>Prompt</strong>: <code>research-10-eda</code></p>
+<p>Full EDA. Produces charts, profile tables, column assessment CSV.</p>
+<p><strong>Flags set</strong>: <code>eda_profiled</code>, <code>column_assessment_exists</code></p>
+<p><strong>Outputs</strong>:</p>
+<ul>
+<li><code>10-eda/run-{id}/charts/</code> — distribution, correlation, category charts</li>
+<li><code>10-eda/run-{id}/tables/column_assessment.csv</code> — per-column flags + strategy</li>
+</ul>
+<hr />
+<h2 id="15-clean">15 — clean<a class="headerlink" href="#15-clean" title="Permanent link">&para;</a></h2>
+<p><strong>Agent</strong>: <code>agents/cleaner.py</code> | <strong>Prompt</strong>: <code>research-15-clean</code></p>
+<p>Data quality cleanup. Produces <code>clean_pipeline.py</code> — re-runnable from raw CSV.</p>
+<p><strong>Flags set</strong>: <code>types_parsed</code>, <code>missing_handled</code>, optionally <code>outliers_flagged</code></p>
+<p><strong>Boundary rule</strong>: clean produces rawClean (same or fewer columns, fixed types). No new features.</p>
+<p>What belongs here:</p>
+<ul>
+<li>Parse string dates → datetime</li>
+<li>Parse <code>"01 TO 03"</code> → numeric midpoint</li>
+<li>Flag IQR outliers as <code>is_outlier_X</code></li>
+<li>Drop constant/ID-only columns</li>
+<li>Standardize category strings</li>
+</ul>
+<p>What does NOT belong here (→ engineer):</p>
+<ul>
+<li>Log transforms, ratios, bins</li>
+<li>Interaction terms</li>
+<li>Aggregation indices</li>
+</ul>
+<hr />
+<h2 id="20-engineer">20 — engineer<a class="headerlink" href="#20-engineer" title="Permanent link">&para;</a></h2>
+<p><strong>Agent</strong>: <code>agents/deep_analyst.py</code> | <strong>Prompts</strong>: <code>research-20-engineer-{plan,step,eval}</code></p>
+<p>Iterative feature engineering. Each invocation runs 1–3 investigation runs.</p>
+<p><strong>Flags set</strong>: <code>candidate_features_created</code>, <code>cheap_prune_done</code> (on sufficient verdict)</p>
+<p><strong>Run loop</strong>:
+<div class="highlight"><pre><span></span><code>plan (hypothesis) → execute steps → generate charts → evaluate
+      ↑___________________________|  (loop if continue)
+</code></pre></div></p>
+<p><strong>Replay chain</strong>: raw → <code>clean_pipeline.py</code> → <code>pipeline.py</code></p>
+<hr />
+<h2 id="25-cluster">25 — cluster<a class="headerlink" href="#25-cluster" title="Permanent link">&para;</a></h2>
+<p><strong>Agent</strong>: <code>agents/clusterer.py</code> | <strong>Prompt</strong>: <code>research-25-cluster</code></p>
+<p>Multi-view regime discovery. Three methods see different shapes of structure:</p>
+<table>
+<thead>
+<tr>
+<th>Method</th>
+<th>Sees</th>
+<th>Misses</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>GMM</td>
+<td>Elliptical, covariance-aware</td>
+<td>Nonlinear, mixed data</td>
+</tr>
+<tr>
+<td>KPrototypes</td>
+<td>Mixed data (numeric + categorical)</td>
+<td>Nonlinear, elliptical</td>
+</tr>
+<tr>
+<td>UMAP + HDBSCAN</td>
+<td>Nonlinear manifolds, arbitrary shapes</td>
+<td>May leave noise unassigned</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Regime validation</strong>: for each feature, tests <code>target ~ feature * cluster</code> — significant interaction = different slopes = genuine regime.</p>
+<p><strong>Flags set</strong>: <code>clusters_discovered</code>, <code>regime_validated</code>, <code>cluster_label_added</code></p>
+<p><strong>Target resolution</strong> (in order, no guessing):</p>
+<ol>
+<li><code>--target</code> CLI flag</li>
+<li><code>target: &lt;col&gt;</code> in human-notes.md</li>
+<li>Prior select phase <code>feature_report.json</code></li>
+<li>Prior EDA LLM response</li>
+</ol>
+<p><strong>Quality gates</strong> to pass:</p>
+<ul>
+<li>Silhouette ≥ 0.3</li>
+<li>No cluster &lt; 5% of data</li>
+<li>At least one feature with significant slope difference (p &lt; 0.05)</li>
+</ul>
+<p><code>cluster_label</code> is saved as a categorical string (<code>"C0"</code>, <code>"C1"</code>, …) so downstream OLS does not treat it as numeric/ordinal.</p>
+<hr />
+<h2 id="30-select">30 — select<a class="headerlink" href="#30-select" title="Permanent link">&para;</a></h2>
+<p><strong>Agent</strong>: <code>agents/selector.py</code> | <strong>Prompt</strong>: <code>research-30-select</code></p>
+<p>6-stage feature selection pipeline, then LLM review.</p>
+<p><strong>Flags set</strong>: <code>target_identified</code>, <code>features_selected</code>, optionally <code>structural_features_preserved</code></p>
+<p><strong>Stages</strong>:</p>
+<ol>
+<li>Cheap prune (missingness, variance, ID-like)</li>
+<li>Correlation clustering (keep one representative per correlated group)</li>
+<li>Pseudo-target redundancy (predict each column from others)</li>
+<li>Light supervised scoring (MI + correlation with target)</li>
+<li>SHAP importance (LightGBM)</li>
+<li>Chart filter (retain time/category for publication)</li>
+</ol>
+<p><strong>Two-track selection</strong>:</p>
+<ul>
+<li><strong>Track A</strong> — predictive, subject to full pruning</li>
+<li><strong>Track B</strong> — structural, listed in <code>human-notes.md</code>, bypass pruning</li>
+</ul>
+<p><strong>Replay chain</strong>: raw → <code>clean_pipeline.py</code> → <code>pipeline.py</code> → <code>cluster_labels.csv</code></p>
+<hr />
+<h2 id="50-report">50 — report<a class="headerlink" href="#50-report" title="Permanent link">&para;</a></h2>
+<p><strong>Agent</strong>: <code>agents/reporter.py</code> | <strong>Prompt</strong>: <code>research-50-report</code></p>
+<p>Publication-ready report with OLS + LightGBM modeling.</p>
+<p><strong>Flags set</strong>: <code>ols_fitted</code>, <code>tree_fitted</code>, <code>report_generated</code></p>
+<p><strong>Model charts generated</strong>:</p>
+<ul>
+<li>OLS coefficient plot</li>
+<li>Partial residual plots (top 2 features)</li>
+<li>Interaction plot (top numeric × top categorical)</li>
+<li>LightGBM feature importance</li>
+<li>SHAP dependence plot (top feature)</li>
+</ul>
+<p><strong>Also produces</strong> <code>50-report/glossary.json</code> — column lineage assembled from all pipeline artifacts:</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Source</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>column</code></td>
+<td>Dataset columns present at report time</td>
+</tr>
+<tr>
+<td><code>origin</code></td>
+<td>Metadata API (raw) or phase that introduced the column</td>
+</tr>
+<tr>
+<td><code>how</code></td>
+<td>Step docstring from <code>clean_pipeline.py</code> or <code>pipeline.py</code></td>
+</tr>
+<tr>
+<td><code>intuition</code></td>
+<td>Why the feature was created</td>
+</tr>
+<tr>
+<td><code>selection_outcome</code></td>
+<td><code>kept</code>, <code>dropped</code>, or <code>Track B</code></td>
+</tr>
+<tr>
+<td><code>selection_reason</code></td>
+<td>Reason from <code>feature_report.json</code></td>
+</tr>
+</tbody>
+</table>
+<p><strong>Replay chain</strong>: raw → <code>clean_pipeline.py</code> → <code>pipeline.py</code> → <code>cluster_labels.csv</code> → modeling</p>
+
+
+
+
+
+
+
+  
+  
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["navigation.tabs", "navigation.sections", "navigation.top", "content.code.copy", "toc.integrate"], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.79ae519e.min.js"></script>
+      
+    
+  </body>
+</html>
