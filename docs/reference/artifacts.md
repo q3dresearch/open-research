@@ -60,6 +60,7 @@ artifacts/{dataset_id}/
       30-select-{run_id}.md
 
   50-report/
+    glossary.json                   ← column lineage: origin, how, intuition, selection outcome
     run-{run_id}/
       report.md                     ← publication-ready narrative
       charts/

@@ -24,7 +24,7 @@ from string import Template
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 import pandas as pd
-from lib.db import get_conn, make_run_id
+from lib.db import RunContext
 from lib.ckan import fetch_metadata, DATA_DIR
 from lib.eda import basic_profile, format_profile
 from lib.llm import load_prompt, call_llm_json, DEFAULT_MODEL
@@ -160,8 +160,8 @@ def execute_step(df: pd.DataFrame, step_code: str) -> tuple[pd.DataFrame, str, s
 def run_clean(dataset_id: str) -> dict:
     """Execute one cleaning run: LLM proposes all steps → execute → evaluate."""
     audit_steps = []
-    conn = get_conn()
-    run_id = make_run_id()
+    ctx = RunContext(dataset_id, ACTION, ACTION_CODE, "cleaner")
+    conn = ctx.conn
 
     # 1. Prerequisites
     ds = conn.execute("SELECT * FROM datasets WHERE id = ?", (dataset_id,)).fetchone()
@@ -277,26 +277,19 @@ def run_clean(dataset_id: str) -> dict:
     # 7. Record in DB
     verdict = plan.get("verdict", "clean")
     combined = {**plan, "step_log": step_log, "after_profile": after_text}
-    conn.execute(
-        """INSERT INTO runs
-           (id, dataset_id, action, action_code, agent, status, finished_at,
-            prompt_template, llm_response, verdict, verdict_reason, artifact_paths)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
-        (
-            run_id, dataset_id, ACTION, ACTION_CODE, "cleaner", "done",
-            datetime.now(timezone.utc).isoformat(),
-            PROMPT_NAME,
-            json.dumps(combined),
-            verdict,
-            plan.get("reason", ""),
-            json.dumps([
-                f"artifacts/{dataset_id}/{PHASE_DIR}/clean_pipeline.py",
-                f"artifacts/{dataset_id}/{PHASE_DIR}/{ACTION_CODE}-{ACTION}-{run_id}.md",
-            ]),
-        ),
+    run_id = ctx.run_id
+    ctx.finish(
+        verdict=verdict,
+        verdict_reason=plan.get("reason", ""),
+        llm_response=json.dumps(combined),
+        artifact_paths=[
+            f"artifacts/{dataset_id}/{PHASE_DIR}/clean_pipeline.py",
+            f"artifacts/{dataset_id}/{PHASE_DIR}/{ACTION_CODE}-{ACTION}-{run_id}.md",
+        ],
+        prompt_template=PROMPT_NAME,
     )
     conn.commit()
-    conn.close()
+    ctx.close()
 
     # 8. Write artifact
     artifact_path = write_run_artifact(

@@ -5,24 +5,24 @@ description: Autonomous research pipeline over public open datasets
 
 # q3d Open Research
 
-Autonomous AI research pipeline that discovers, vets, analyzes, and produces publication-ready reports on public datasets — with no human required until the final approval gate.
+Autonomous AI research pipeline that discovers, vets, analyzes, and produces publication-ready reports on public datasets — with a human in the loop at every meaningful decision point.
 
 ---
 
-## What it does
+## Pipeline
 
 ```mermaid
 graph LR
-    PORTAL["Public Data Portal<br/>(data.gov.sg)"] --> VET["Vet Schema"]
-    VET --> EDA["Profile + EDA"]
-    EDA --> CLEAN["Clean Data"]
-    CLEAN --> ENGINEER["Engineer Features"]
-    ENGINEER <--> CLUSTER["Discover Regimes"]
-    CLUSTER --> SELECT["Select Features"]
-    SELECT --> REPORT["Research Report"]
+    PORTAL["Public Data Portal<br/>(data.gov.sg)"] --> VET["00 Vet"]
+    VET --> EDA["10 EDA"]
+    EDA --> CLEAN["15 Clean"]
+    CLEAN --> ENGINEER["20 Engineer"]
+    ENGINEER <--> CLUSTER["25 Cluster"]
+    CLUSTER --> SELECT["30 Select"]
+    SELECT --> REPORT["50 Report"]
 ```
 
-The pipeline runs seven phases, each with a dedicated AI agent. Phases can **cycle** (engineer ↔ cluster) until regimes are validated, then advance to the next trunk phase.
+Each phase has a dedicated agent. The engineer ↔ cluster loop runs until regimes are validated or definitively absent. Every downstream agent **replays** all upstream transforms from raw CSV — no cached state is trusted.
 
 ---
 
@@ -32,22 +32,19 @@ The pipeline runs seven phases, each with a dedicated AI agent. Phases can **cyc
 # Vet a dataset from data.gov.sg
 python -m agents.vetter d_8b84c4ee58e3cfc0ece0d773c8ca6abc
 
-# Run EDA
-python -m agents.analyst d_8b84c4ee58e3cfc0ece0d773c8ca6abc
-
-# Clean → Engineer → Cluster → Select → Report
-python -m agents.cleaner d_8b84c4ee58e3cfc0ece0d773c8ca6abc
+# Run the full pipeline
+python -m agents.analyst    d_8b84c4ee58e3cfc0ece0d773c8ca6abc
+python -m agents.cleaner    d_8b84c4ee58e3cfc0ece0d773c8ca6abc
 python -m agents.deep_analyst d_8b84c4ee58e3cfc0ece0d773c8ca6abc
-python -m agents.clusterer d_8b84c4ee58e3cfc0ece0d773c8ca6abc --target resale_price
-python -m agents.selector d_8b84c4ee58e3cfc0ece0d773c8ca6abc
-python -m agents.reporter d_8b84c4ee58e3cfc0ece0d773c8ca6abc
+python -m agents.clusterer  d_8b84c4ee58e3cfc0ece0d773c8ca6abc --target resale_price
+python -m agents.selector   d_8b84c4ee58e3cfc0ece0d773c8ca6abc
+python -m agents.reporter   d_8b84c4ee58e3cfc0ece0d773c8ca6abc
 ```
 
-Check your route progress at any point:
+Or use the GUI:
 
-```python
-from lib.flags import print_route_map
-print_route_map("d_8b84c4ee58e3cfc0ece0d773c8ca6abc")
+```bash
+streamlit run app/app.py
 ```
 
 ---
@@ -56,21 +53,22 @@ print_route_map("d_8b84c4ee58e3cfc0ece0d773c8ca6abc")
 
 | Code | Phase | Agent | What it does |
 |------|-------|-------|-------------|
-| 00 | **vet** | `vetter.py` | Schema quality gate — LLM judges metadata |
-| 10 | **eda** | `analyst.py` | Profile, charts, column assessment |
-| 15 | **clean** | `cleaner.py` | Parse types, handle missing, flag outliers |
-| 20 | **engineer** | `deep_analyst.py` | Feature engineering, iterative hypothesis runs |
-| 25 | **cluster** | `clusterer.py` | Regime discovery: GMM / KPrototypes / UMAP+HDBSCAN |
-| 30 | **select** | `selector.py` | 6-stage feature selection, Track A + Track B |
-| 50 | **report** | `reporter.py` | OLS + LightGBM + publication markdown |
+| 00 | **vet** | `agents/vetter.py` | Schema quality gate — LLM judges metadata + 500-row profile |
+| 10 | **eda** | `agents/analyst.py` | Full profile, charts, column assessment |
+| 15 | **clean** | `agents/cleaner.py` | Parse types, handle missing, flag outliers → `clean_pipeline.py` |
+| 20 | **engineer** | `agents/deep_analyst.py` | Iterative feature hypotheses → `pipeline.py` |
+| 25 | **cluster** | `agents/clusterer.py` | Regime discovery: GMM / KPrototypes / UMAP+HDBSCAN |
+| 30 | **select** | `agents/selector.py` | 6-stage selection, Track A (predictive) + Track B (structural) |
+| 50 | **report** | `agents/reporter.py` | OLS + LightGBM, publication markdown + column glossary |
 
 ---
 
-## Key design principles
+## Design principles
 
-- **Honest failures** — null results and "no signal" are valid outputs, not failures
-- **No guessing** — target columns come from human-notes or prior LLM judgment, never keyword heuristics
+- **Honest failures** — null results and "no signal" are valid outputs
+- **Good decisions over good predictions** — structural features survive even with low SHAP
 - **Two-track selection** — Track A (predictive, prunable) vs Track B (structural, bypass pruning)
-- **Regime-aware modeling** — clustering discovers if different subgroups have different relationships with the target
-- **Human in the loop** — `human-notes.md` steers every phase; agents read it before acting
-- **Replay chain** — every agent re-runs all upstream transforms from raw CSV, never trust cached state
+- **Regime-aware modeling** — clusters test whether subgroups have genuinely different relationships with the target
+- **Human in the loop** — `artifacts/{id}/human-notes.md` steers every phase
+- **Replay chain** — raw → `clean_pipeline.py` → `pipeline.py` → `cluster_labels.csv` → modeling
+- **Pipeline types** — datasets route to the right pipeline (`transactional` / `aggregate` / `reference`) rather than failing

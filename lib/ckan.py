@@ -1,5 +1,24 @@
-"""Fetch datasets from data.gov.sg APIs."""
+"""Fetch datasets from data.gov.sg APIs.
 
+Download strategies
+-------------------
+data.gov.sg offers two download paths:
+
+1. Bulk download (preferred for full datasets)
+   initiate-download → poll-download → direct CSV URL
+   Avoids pagination rate limits. Returns a pre-signed URL for the full file.
+   Endpoint: https://api-open.data.gov.sg/v1/public/api/datasets/{id}/initiate-download
+             https://api-open.data.gov.sg/v1/public/api/datasets/{id}/poll-download
+
+2. Paginated CKAN search (fallback / small slices)
+   Datastore search API with limit/offset pagination.
+   Rate-limited to 5 req/min without an API key.
+   Endpoint: https://data.gov.sg/api/action/datastore_search
+
+Use fetch_all_rows_bulk() for full datasets. Use fetch_rows() for small samples.
+"""
+
+import io
 import os
 import time
 import httpx
@@ -12,6 +31,8 @@ DATA_DIR = Path(__file__).resolve().parent.parent / "data"
 DATASTORE_URL = "https://data.gov.sg/api/action/datastore_search"
 METADATA_URL = "https://api-production.data.gov.sg/v2/public/api/datasets"
 COLLECTION_URL = "https://api-production.data.gov.sg/v2/public/api/collections"
+INITIATE_URL = "https://api-open.data.gov.sg/v1/public/api/datasets/{}/initiate-download"
+POLL_URL = "https://api-open.data.gov.sg/v1/public/api/datasets/{}/poll-download"
 
 
 def _load_env():
@@ -111,11 +132,16 @@ def fetch_metadata(dataset_id: str) -> dict:
     }
 
 
-def fetch_collection(collection_id: str) -> dict:
-    """Fetch collection metadata: name, description, frequency, child datasets."""
+def fetch_collection(collection_id: str) -> dict | None:
+    """Fetch collection metadata: name, description, frequency, child datasets.
+
+    Returns None if the collection endpoint returns no usable data.
+    """
     resp = httpx.get(f"{COLLECTION_URL}/{collection_id}/metadata", timeout=15)
     resp.raise_for_status()
-    meta = resp.json()["data"]["collectionMetadata"]
+    meta = (resp.json().get("data") or {}).get("collectionMetadata") or {}
+    if not meta.get("collectionId"):
+        return None
     return {
         "collection_id": meta["collectionId"],
         "name": meta.get("name"),
@@ -223,6 +249,78 @@ def fetch_all_rows(dataset_id: str, page_size: int = 5000,
     df = pd.concat(frames, ignore_index=True)
     if "_id" in df.columns:
         df = df.drop(columns=["_id"])
+    return df
+
+
+def fetch_all_rows_bulk(dataset_id: str, poll_interval: float = 3.0,
+                        timeout: float = 300.0) -> pd.DataFrame:
+    """Download a full dataset via the initiate-download + poll-download flow.
+
+    This is the preferred method for full datasets. It requests a pre-signed
+    CSV download URL from data.gov.sg rather than paginating row by row.
+
+    Steps:
+      1. POST /initiate-download  → server queues the export job
+      2. GET  /poll-download      → poll until status == "READY", then download URL
+      3. Download the CSV directly
+
+    Args:
+        dataset_id:    data.gov.sg dataset ID (e.g. d_8b84c4ee58e3cfc0ece0d773c8ca6abc)
+        poll_interval: seconds between status polls (default 3s)
+        timeout:       give up after this many seconds (default 300s = 5 min)
+
+    Returns:
+        Full DataFrame with all rows.
+    """
+    headers = _get_datagov_headers()
+    t0 = time.time()
+
+    # 1. Initiate download
+    print(f"  Initiating bulk download for {dataset_id}...")
+    resp = httpx.get(INITIATE_URL.format(dataset_id), headers=headers, timeout=30)
+    resp.raise_for_status()
+    result = resp.json()
+    if result.get("code") not in (200, 201) and "errorMsg" in result:
+        raise RuntimeError(f"Initiate download failed: {result['errorMsg']}")
+    print(f"  Download queued. Polling for ready URL...")
+
+    # 2. Poll until READY
+    download_url = None
+    attempt = 0
+    while True:
+        elapsed = time.time() - t0
+        if elapsed > timeout:
+            raise RuntimeError(f"Bulk download timed out after {elapsed:.0f}s")
+
+        resp = httpx.get(POLL_URL.format(dataset_id), headers=headers, timeout=30)
+        resp.raise_for_status()
+        poll = resp.json()
+        status = poll.get("data", {}).get("status", "UNKNOWN")
+
+        print(f"  [{elapsed:5.0f}s] status: {status}...", end="\r", flush=True)
+
+        if status == "READY":
+            download_url = poll["data"]["url"]
+            print(f"\n  Ready after {elapsed:.0f}s. Downloading CSV...")
+            break
+
+        attempt += 1
+        time.sleep(poll_interval)
+
+    # 3. Download the CSV
+    t_dl = time.time()
+    resp = httpx.get(download_url, timeout=120, follow_redirects=True)
+    resp.raise_for_status()
+    elapsed_dl = time.time() - t_dl
+    size_mb = len(resp.content) / 1_048_576
+    print(f"  Downloaded {size_mb:.1f} MB in {elapsed_dl:.1f}s")
+
+    df = pd.read_csv(io.BytesIO(resp.content))
+    if "_id" in df.columns:
+        df = df.drop(columns=["_id"])
+
+    total_elapsed = time.time() - t0
+    print(f"  Bulk download complete: {len(df):,} rows × {len(df.columns)} cols in {total_elapsed:.0f}s")
     return df
 
 

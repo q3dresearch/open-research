@@ -59,12 +59,47 @@ def call_llm(prompt: str, model: str = DEFAULT_MODEL, max_tokens: int = 1024) ->
     return data["choices"][0]["message"]["content"]
 
 
+def _split_response(text: str) -> tuple[str, str]:
+    """Split a raw LLM response into (reasoning, json_block).
+
+    reasoning: the prose before the JSON fence (model's chain-of-thought).
+    json_block: the raw JSON string inside the fence.
+    """
+    if "```json" in text:
+        reasoning = text.split("```json")[0].strip()
+        json_block = text.split("```json")[1].split("```")[0]
+    elif "```" in text:
+        reasoning = text.split("```")[0].strip()
+        json_block = text.split("```")[1].split("```")[0]
+    else:
+        reasoning = ""
+        json_block = text
+    return reasoning, json_block.strip()
+
+
 def call_llm_json(prompt: str, model: str = DEFAULT_MODEL, max_tokens: int = 1024) -> dict:
     """Send a prompt and parse the response as JSON."""
     text = call_llm(prompt, model=model, max_tokens=max_tokens)
-    # Extract JSON from markdown code block if present
-    if "```json" in text:
-        text = text.split("```json")[1].split("```")[0]
-    elif "```" in text:
-        text = text.split("```")[1].split("```")[0]
-    return json.loads(text.strip())
+    _, json_block = _split_response(text)
+    return json.loads(json_block)
+
+
+def call_llm_traced(prompt: str, model: str = DEFAULT_MODEL, max_tokens: int = 1024) -> dict:
+    """Like call_llm_json but also captures the model's reasoning.
+
+    The model typically writes reasoning prose before the JSON block.
+    That pre-fence text is the chain-of-thought — this function preserves it
+    for logging to memory journals and notebooks.
+
+    Returns:
+        {
+          "text":      str,   # full raw response
+          "json":      dict,  # parsed dict from the JSON block
+          "reasoning": str,   # prose before the JSON block (model's CoT)
+        }
+    Raises json.JSONDecodeError if the JSON block cannot be parsed.
+    """
+    text = call_llm(prompt, model=model, max_tokens=max_tokens)
+    reasoning, json_block = _split_response(text)
+    parsed = json.loads(json_block)
+    return {"text": text, "json": parsed, "reasoning": reasoning or text.strip()}

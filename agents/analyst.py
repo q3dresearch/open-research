@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 """
-EDA Analyst: runs full EDA on a dataset that passed schema vetting.
+Phase 10 EDA Analyst — basic profiling and chart generation.
+
+Runs full EDA on a dataset that passed schema vetting (phase 00).
 
 Usage:
     python -m agents.analyst <dataset_id>
@@ -15,8 +17,8 @@ from string import Template
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 import pandas as pd
-from lib.db import init_db, get_conn, make_run_id
-from lib.ckan import fetch_metadata, fetch_collection, fetch_to_dataframe, save_dataset, DATA_DIR
+from lib.db import init_db, RunContext
+from lib.ckan import fetch_metadata, fetch_collection, fetch_to_dataframe, fetch_all_rows, save_dataset, DATA_DIR
 from lib.eda import basic_profile, format_profile, generate_eda_charts, save_profile_tables
 from lib.llm import load_prompt, call_llm_json, DEFAULT_MODEL
 from lib.artifacts import (
@@ -70,7 +72,8 @@ def build_prompt(meta, collection, profile, eda_text, head_text, vet_summary, hu
 
 def analyze_dataset(dataset_id: str, sample_limit: int = 5000) -> dict:
     steps = []
-    conn = get_conn()
+    ctx = RunContext(dataset_id, ACTION, ACTION_CODE, "analyst")
+    conn = ctx.conn
 
     # 1. Check prerequisites
     ds = conn.execute("SELECT * FROM datasets WHERE id = ?", (dataset_id,)).fetchone()
@@ -104,11 +107,38 @@ def analyze_dataset(dataset_id: str, sample_limit: int = 5000) -> dict:
         collection = fetch_collection(meta["collection_ids"][0])
 
     # 4. Load data (cached or fetch)
+    # If the cache is a small sample (<20% of known total), download the full dataset first,
+    # unless the estimated full size exceeds MAX_DOWNLOAD_BYTES.
+    MAX_DOWNLOAD_BYTES = 500 * 1024 * 1024  # 500 MB — full CSV size limit
+
     cached = DATA_DIR / f"{dataset_id}.csv"
+    known_total = ds["row_count"] or 0
     if cached.exists():
-        print(f"Using cached data: {cached}")
-        df = pd.read_csv(cached)
-        steps.append({"name": "load_cached_csv", "detail": f"{len(df)} rows from {cached.name}"})
+        cached_rows = sum(1 for _ in open(cached)) - 1  # fast line count
+        needs_full = (known_total > 0 and cached_rows < known_total * 0.2
+                      and not dataset_id.startswith("local_"))
+        if needs_full:
+            # Estimate full CSV size from the cached sample before committing to download
+            sample_bytes = cached.stat().st_size
+            estimated_bytes = int(sample_bytes / max(cached_rows, 1) * known_total)
+            if estimated_bytes > MAX_DOWNLOAD_BYTES:
+                size_mb = estimated_bytes / 1_048_576
+                print(f"  -> Dataset too large: estimated {size_mb:.0f} MB full CSV (limit 500 MB). Skipping.")
+                conn.execute(
+                    "UPDATE datasets SET rejected=1, reject_reason=? WHERE id=?",
+                    (f"too_large_to_download: estimated {size_mb:.0f} MB", dataset_id),
+                )
+                conn.commit()
+                conn.close()
+                return
+            print(f"Cached CSV has {cached_rows:,} rows but API reports {known_total:,} — downloading full dataset...")
+            df = fetch_all_rows(dataset_id)
+            save_dataset(dataset_id, df)
+            steps.append({"name": "fetch_all_rows + save_csv", "detail": f"{len(df)} rows (full dataset)"})
+        else:
+            print(f"Using cached data: {cached}")
+            df = pd.read_csv(cached)
+            steps.append({"name": "load_cached_csv", "detail": f"{len(df)} rows from {cached.name}"})
     else:
         print(f"Fetching rows (limit={sample_limit})...")
         df = fetch_to_dataframe(dataset_id, limit=sample_limit)
@@ -125,8 +155,7 @@ def analyze_dataset(dataset_id: str, sample_limit: int = 5000) -> dict:
     steps.append({"name": "basic_profile", "detail": f"{profile['row_count']} rows, {profile['col_count']} columns"})
 
     # 6. Generate charts + tables into {PHASE_DIR}/run-{id}/
-    _temp_run_id = make_run_id()
-    run_dir = ARTIFACTS_DIR / dataset_id / PHASE_DIR / f"run-{_temp_run_id}"
+    run_dir = ARTIFACTS_DIR / dataset_id / PHASE_DIR / f"run-{ctx.run_id}"
     run_dir.mkdir(parents=True, exist_ok=True)
 
     chart_dir = run_dir / "charts"
@@ -153,20 +182,14 @@ def analyze_dataset(dataset_id: str, sample_limit: int = 5000) -> dict:
     steps.append({"name": "call_llm_json", "detail": f"{PROMPT_NAME} -> {analysis['verdict']}"})
 
     # 7. Record run in DB
-    run_id = _temp_run_id  # reuse the ID from chart dir
+    run_id = ctx.run_id
     artifact_rel = f"artifacts/{dataset_id}/{PHASE_DIR}/run-{run_id}/{ACTION_CODE}-{ACTION}-{run_id}.md"
-    conn.execute(
-        """INSERT INTO runs
-           (id, dataset_id, action, action_code, agent, status, finished_at,
-            prompt_template, llm_response, verdict, verdict_reason, artifact_paths)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
-        (
-            run_id, dataset_id, ACTION, ACTION_CODE, "analyst", "done",
-            datetime.now(timezone.utc).isoformat(),
-            PROMPT_NAME,
-            json.dumps(analysis), analysis["verdict"], analysis["reason"],
-            json.dumps([artifact_rel]),
-        ),
+    ctx.finish(
+        verdict=analysis["verdict"],
+        verdict_reason=analysis["reason"],
+        llm_response=json.dumps(analysis),
+        artifact_paths=[artifact_rel],
+        prompt_template=PROMPT_NAME,
     )
 
     if analysis["verdict"] == "promote":
@@ -185,7 +208,7 @@ def analyze_dataset(dataset_id: str, sample_limit: int = 5000) -> dict:
         )
 
     conn.commit()
-    conn.close()
+    ctx.close()
 
     # 8. Write artifact into run dir
     context_text = f"Previous vet:\n{vet_summary}" if prev_vet else ""

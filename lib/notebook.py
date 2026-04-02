@@ -234,6 +234,30 @@ def add_pipeline_steps_cells(nb: nbformat.NotebookNode, pipeline_path: str,
         nb.cells.append(nbformat.v4.new_code_cell(cell_src))
 
 
+def add_cot_cell(nb: nbformat.NotebookNode, step_name: str, reasoning: str) -> None:
+    """Append the model's chain-of-thought as a collapsible markdown cell.
+
+    Uses an HTML <details> block so the notebook stays readable at a glance
+    while the full reasoning is preserved for audit.
+
+    step_name: label shown in the summary line (e.g. "plan", "step_02", "eval")
+    reasoning: prose text before the JSON block — the model's actual thinking
+    """
+    reasoning = (reasoning or "").strip()
+    if not reasoning:
+        return
+    display = reasoning
+    if len(display) > 3000:
+        display = display[:2800] + "\n\n*... [truncated — full reasoning in memory/]*"
+    source = (
+        f"**[COT]** `{step_name}`\n\n"
+        f"<details>\n<summary>Model reasoning</summary>\n\n"
+        f"{display}\n\n"
+        f"</details>"
+    )
+    nb.cells.append(nbformat.v4.new_markdown_cell(source))
+
+
 def add_code_cell(nb: nbformat.NotebookNode, source: str) -> None:
     nb.cells.append(nbformat.v4.new_code_cell(source))
 
