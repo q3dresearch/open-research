@@ -13,6 +13,7 @@ Usage:
 
 import importlib.util
 import json
+import os
 import re
 import sys
 from datetime import datetime, timezone
@@ -23,7 +24,7 @@ import pandas as pd
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from lib.db import make_run_id
+from lib.db import RunContext
 from lib.ckan import fetch_metadata, DATA_DIR
 from lib.llm import load_prompt, call_llm, DEFAULT_MODEL
 from lib.artifacts import (
@@ -77,6 +78,123 @@ def load_feature_report(dataset_id: str) -> dict | None:
     if report_path.exists():
         return json.loads(report_path.read_text())
     return None
+
+
+def build_column_glossary(dataset_id: str, meta: dict) -> list[dict]:
+    """Assemble a column-level glossary from all pipeline artifacts.
+
+    Each entry: {column, origin, how, intuition, selection_outcome, selection_reason}
+
+    Sources:
+    - Original columns: dataset metadata (meta["columns"])
+    - Clean steps: 15-clean/state.json step_log (columns_affected per step)
+    - Engineer steps: 20-engineer/pipeline.py docstrings parsed via ast
+    - Selection: feature_report.json kept/dropped/overrides
+    """
+    import ast as _ast
+
+    glossary: dict[str, dict] = {}
+
+    # 1. Seed with original columns from metadata
+    for col in meta.get("columns", []):
+        name = col.get("name") or col.get("title", "?")
+        glossary[name] = {
+            "column": name,
+            "origin": "original",
+            "how": f"{col.get('data_type', '?')} field from source data",
+            "intuition": col.get("title", name),
+            "selection_outcome": None,
+            "selection_reason": None,
+        }
+
+    # 2. Annotate with clean step descriptions (columns_affected per step)
+    clean_state_path = ARTIFACTS_DIR / dataset_id / CLEAN_DIR / "state.json"
+    if clean_state_path.exists():
+        clean_state = json.loads(clean_state_path.read_text())
+        for step in clean_state.get("step_log", []):
+            desc = step.get("description", "")
+            for col in step.get("columns_affected", []):
+                if col in glossary:
+                    glossary[col]["how"] = f"Cleaned: {desc}"
+                else:
+                    glossary[col] = {
+                        "column": col,
+                        "origin": "clean",
+                        "how": desc,
+                        "intuition": "",
+                        "selection_outcome": None,
+                        "selection_reason": None,
+                    }
+
+    # 3. Parse engineer pipeline.py for each step's docstring + new columns
+    pipeline_path = ARTIFACTS_DIR / dataset_id / ENGINEER_DIR / "pipeline.py"
+    if pipeline_path.exists():
+        try:
+            src = pipeline_path.read_text()
+            tree = _ast.parse(src)
+            for node in _ast.walk(tree):
+                if isinstance(node, _ast.FunctionDef) and node.name.startswith("step_"):
+                    docstring = _ast.get_docstring(node) or ""
+                    # Heuristic: find df[...] = ... assignments to detect new columns
+                    for child in _ast.walk(node):
+                        if (isinstance(child, _ast.Assign)
+                                and isinstance(child.targets[0], _ast.Subscript)
+                                and isinstance(child.targets[0].value, _ast.Name)
+                                and child.targets[0].value.id == "df"):
+                            slice_node = child.targets[0].slice
+                            col_name = (slice_node.s if isinstance(slice_node, _ast.Constant)
+                                        and isinstance(slice_node.s, str) else None)
+                            if col_name and col_name not in glossary:
+                                step_label = node.name.replace("step_", "").replace("_", " ").strip("0123456789 ")
+                                glossary[col_name] = {
+                                    "column": col_name,
+                                    "origin": "engineered",
+                                    "how": f"{step_label}: {docstring[:120]}".strip(": "),
+                                    "intuition": docstring[:200] if docstring else "",
+                                    "selection_outcome": None,
+                                    "selection_reason": None,
+                                }
+        except Exception:
+            pass
+
+    # 4. Annotate selection outcomes from feature_report
+    feature_report = load_feature_report(dataset_id)
+    if feature_report:
+        llm = feature_report.get("llm_review", {})
+        final_keep = set(llm.get("final_keep", []))
+        track_b = set(feature_report.get("track_b", []))
+
+        for col in final_keep:
+            if col in glossary:
+                track = "Track B (structural)" if col in track_b else "Track A (predictive)"
+                glossary[col]["selection_outcome"] = f"kept — {track}"
+
+        for override in llm.get("overrides", []):
+            col = override.get("column")
+            if col and col in glossary:
+                action = override.get("action", "override")
+                reason = override.get("reason", "")
+                if action == "restore":
+                    glossary[col]["selection_outcome"] = "kept — LLM override (restore)"
+                    glossary[col]["selection_reason"] = reason
+                elif action == "drop":
+                    glossary[col]["selection_outcome"] = "dropped — LLM override"
+                    glossary[col]["selection_reason"] = reason
+
+        for dropped in feature_report.get("selection_report", {}).get("dropped", []):
+            col = dropped.get("column")
+            if col and col in glossary:
+                if not glossary[col]["selection_outcome"]:
+                    stage_name = f"S{dropped.get('stage', '?')} {dropped.get('stage_name', '')}"
+                    glossary[col]["selection_outcome"] = f"dropped — {stage_name.strip()}"
+                    glossary[col]["selection_reason"] = dropped.get("reason", "")
+
+        # Mark remaining kept columns
+        for col, entry in glossary.items():
+            if entry["selection_outcome"] is None and col in final_keep:
+                entry["selection_outcome"] = "kept"
+
+    return list(glossary.values())
 
 
 def load_endgame_charts(dataset_id: str) -> list[dict]:
@@ -482,10 +600,56 @@ def build_modeling_summary(model_result: dict, run_id: str) -> str:
     return "\n".join(lines)
 
 
+def _fix_chart_paths(report_text: str, dataset_id: str, report_run_dir: Path) -> str:
+    """Rewrite broken chart image paths in LLM-generated report.
+
+    The LLM often writes bare `charts/filename.png` for charts that actually
+    live in sibling phase directories. This function:
+    1. Builds a filename→absolute-path map from all chart dirs in the dataset.
+    2. Scans the report for ![...](path) references.
+    3. For each reference, if the path doesn't resolve from report_run_dir,
+       look up the filename in the map and replace with the correct relative path.
+    """
+    dataset_root = ARTIFACTS_DIR / dataset_id
+
+    # Build filename → absolute path index.
+    # Sort by path so that the current report_run_dir's charts overwrite earlier runs.
+    # This ensures model charts reference the current run, not a stale previous one.
+    chart_index: dict[str, Path] = {}
+    all_charts = sorted(dataset_root.rglob("charts/*.png"), key=lambda p: (
+        0 if p.is_relative_to(report_run_dir) else 1,  # current run first
+        str(p)
+    ))
+    for png in all_charts:
+        chart_index[png.name] = png
+
+    def resolve_img(m: re.Match) -> str:
+        alt = m.group(1)
+        path_str = m.group(2)
+
+        # Try to resolve as-is relative to report_run_dir
+        candidate = (report_run_dir / path_str).resolve()
+        if candidate.exists():
+            return m.group(0)  # already correct
+
+        # Try to resolve by filename only
+        filename = Path(path_str).name
+        if filename in chart_index:
+            abs_chart = chart_index[filename]
+            rel = Path(os.path.relpath(abs_chart, report_run_dir))
+            return f"![{alt}]({rel.as_posix()})"
+
+        # Can't resolve — leave as-is (broken path is visible in the rendered report)
+        return m.group(0)
+
+    return re.sub(r'!\[([^\]]*)\]\(([^)]+\.png)\)', resolve_img, report_text)
+
+
 def generate_report(dataset_id: str) -> str:
     """Generate the full research report."""
     steps = []
-    run_id = make_run_id()
+    ctx = RunContext(dataset_id, ACTION, ACTION_CODE, "reporter")
+    run_id = ctx.run_id
 
     # 2. Gather all context (bounded)
     meta = fetch_metadata(dataset_id)
@@ -555,19 +719,23 @@ def generate_report(dataset_id: str) -> str:
     print(f"  Report: {len(report_text)} chars, {report_text.count(chr(10))} lines")
     steps.append({"name": "generate_report", "detail": f"{len(report_text)} chars"})
 
-    # 6. Fix relative paths — LLM sometimes gets path depth wrong
-    # Report lives at {PHASE_DIR}/run-{id}/report.md, needs ../../ to reach dataset root
-    # Fix single ../ to ../../ for sibling phase references (e.g. ../20-engineer/ → ../../20-engineer/)
-    report_text = re.sub(r'(?<!\.)\.\./([\d][\d]-)', r'../../\1', report_text)
-    # Fix report-phase chart paths — model charts are in same run dir, not ../{PHASE_DIR}/
-    report_text = re.sub(
-        rf'\.\./(?:\.\./)?{re.escape(PHASE_DIR)}/[^/]*/charts/', 'charts/', report_text
-    )
+    # 6. Fix chart paths — LLM frequently writes bare `charts/filename.png` for charts
+    # that live in sibling phase directories (30-select, 20-engineer, etc.).
+    # Build a filename→correct-relative-path map from all known chart locations,
+    # then rewrite any unresolvable references in the report.
+    report_text = _fix_chart_paths(report_text, dataset_id, run_dir)
 
-    # 7. Save report (run_dir already created in modeling step)
+    # 7. Save report and glossary
     report_path = run_dir / "report.md"
     report_path.write_text(report_text)
     print(f"  Saved: {report_path}")
+
+    # Build and save column glossary
+    glossary = build_column_glossary(dataset_id, meta)
+    glossary_path = ARTIFACTS_DIR / dataset_id / PHASE_DIR / "glossary.json"
+    glossary_path.parent.mkdir(parents=True, exist_ok=True)
+    glossary_path.write_text(json.dumps(glossary, indent=2))
+    print(f"  Glossary: {glossary_path} ({len(glossary)} columns)")
 
     # Save run metadata
     run_meta = {
@@ -664,6 +832,23 @@ def generate_report(dataset_id: str) -> str:
         print(f"  Notebook updated: session.ipynb")
     except Exception as e:
         import traceback; traceback.print_exc(); print(f"  Notebook write failed: {e}")
+
+    # Record run in DB
+    ctx.finish(
+        verdict="complete",
+        verdict_reason=f"{len(report_text)} chars, {len(model_result.get('charts', []))} model charts",
+        artifact_paths=[
+            f"artifacts/{dataset_id}/{PHASE_DIR}/run-{run_id}/report.md",
+            f"artifacts/{dataset_id}/{PHASE_DIR}/glossary.json",
+        ],
+        prompt_template=PROMPT_NAME,
+    )
+    ctx.conn.execute(
+        "UPDATE datasets SET max_action_code = '50', updated_at = datetime('now') WHERE id = ?",
+        (dataset_id,),
+    )
+    ctx.conn.commit()
+    ctx.close()
 
     return report_text
 

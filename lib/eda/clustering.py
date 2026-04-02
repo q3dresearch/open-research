@@ -429,7 +429,8 @@ def between_cluster_anova(df: pd.DataFrame, target_col: str,
 
 def cluster_quality_report(df: pd.DataFrame, labels: np.ndarray,
                            target_col: str, feature_cols: list[str],
-                           cluster_col: str = "cluster_label") -> dict:
+                           cluster_col: str = "cluster_label",
+                           silhouette: float | None = None) -> dict:
     """Combined cluster quality assessment. [cluster]
 
     Runs all validation checks and returns a structured report:
@@ -437,6 +438,8 @@ def cluster_quality_report(df: pd.DataFrame, labels: np.ndarray,
     - anova: between-cluster target differences
     - regime_tests: per-feature regime validation
     - verdict: pass/marginal/fail
+
+    silhouette: best-view silhouette score (included in verdict logic).
     """
     temp = df.copy()
     temp[cluster_col] = labels
@@ -447,12 +450,12 @@ def cluster_quality_report(df: pd.DataFrame, labels: np.ndarray,
 
     # Verdict logic
     n_regimes = sum(1 for r in regime_tests if r["is_regime"])
-    has_good_silhouette = True  # caller checks this separately
+    has_good_silhouette = silhouette is None or silhouette >= 0.3
     sizes_ok = size_check["valid"]
     anova_sig = anova["p_value"] < 0.05
     has_regimes = n_regimes > 0
 
-    if sizes_ok and anova_sig and has_regimes:
+    if sizes_ok and has_good_silhouette and anova_sig and has_regimes:
         verdict = "pass"
     elif sizes_ok and (anova_sig or has_regimes):
         verdict = "marginal"
@@ -461,6 +464,7 @@ def cluster_quality_report(df: pd.DataFrame, labels: np.ndarray,
 
     return {
         "verdict": verdict,
+        "silhouette": silhouette,
         "size_check": size_check,
         "anova": anova,
         "regime_tests": regime_tests,

@@ -285,6 +285,35 @@ All agents derive their constants from this registry. Never hardcode action code
 
 ---
 
+## Cron Graduation _(proposal — not yet implemented)_
+
+After a dataset completes the full pipeline and the report is accepted, it graduates into a **standing cron job**. The `artifacts/` investigation tree is retired.
+
+Open questions:
+- Cron notebooks likely live in a separate repo (e.g. `q3dresearch/cron-notebooks`) rather than this repo, to keep investigation artifacts separate from live outputs.
+- Dataset-specific helper code (custom parsing, bespoke joins) that emerged during the artifact phase can be embedded as notebook cells rather than requiring a shared lib.
+
+### Proposed graduated structure
+
+```
+cron/{dataset_id}/
+  pipe.ipynb     ← frozen end-to-end pipeline (clean → engineer → cluster → report)
+  cron.py        ← re-runs pipe.ipynb on schedule, overwrites outputs
+  report.md      ← latest report (updated each run)
+  tweet.txt      ← 280-char summary
+  charts/        ← latest figures (overwritten each run)
+```
+
+### Proposed graduation criteria
+
+| Type | Approval | Condition |
+|---|---|---|
+| `aggregate` | Auto | All phases pass, 0 unresolved concerns |
+| `transactional` | Human | One manual sign-off at report phase |
+| `reference` | Never | Join-enrichment only, no standalone pipeline |
+
+---
+
 ## Stack
 
 - Python 3.12, SQLite (`observatory.db`), OpenRouter (gemini-flash)

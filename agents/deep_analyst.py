@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Level 2 Deep Analyst — run-based investigation architecture.
+Phase 20 Engineer (deep_analyst) — feature engineering via run-based investigation.
 
 Each invocation is a RUN: a multi-step investigation testing one hypothesis.
   1. Reads current state (pipeline.py + state.json)
@@ -24,10 +24,11 @@ from string import Template
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 import pandas as pd
-from lib.db import get_conn, make_run_id
+from lib.db import RunContext
 from lib.ckan import fetch_metadata, DATA_DIR
 from lib.eda import basic_profile, format_profile, generate_eda_charts
-from lib.llm import load_prompt, call_llm_json, DEFAULT_MODEL
+from lib.llm import load_prompt, call_llm_json, call_llm_traced, DEFAULT_MODEL
+from lib import memory as mem_lib
 from lib.artifacts import (
     write_run_artifact, ensure_human_notes, load_human_notes,
     load_prior_artifacts, ARTIFACTS_DIR, ACTION_CODES, action_dir,
@@ -224,8 +225,11 @@ def execute_step(df: pd.DataFrame, step_code: str, step_num: int) -> tuple[pd.Da
 def run_once(dataset_id: str, max_steps: int = MAX_STEPS_PER_RUN) -> dict:
     """Execute one investigation run: plan → steps → charts → evaluate."""
     audit_steps = []
-    conn = get_conn()
-    run_id = make_run_id()
+    cot_log: list[tuple[str, str]] = []   # (step_name, reasoning) for notebook
+    ctx = RunContext(dataset_id, ACTION, ACTION_CODE, "deep_analyst")
+    conn = ctx.conn
+    run_id = ctx.run_id
+    mem_lib.open_run(dataset_id, ACTION_CODE, ACTION, run_id)
 
     # 1. Prerequisites
     ds = conn.execute("SELECT * FROM datasets WHERE id = ?", (dataset_id,)).fetchone()
@@ -297,12 +301,16 @@ def run_once(dataset_id: str, max_steps: int = MAX_STEPS_PER_RUN) -> dict:
         column_assessment=column_assessment_text,
         human_notes=human_notes or "_(none)_",
     )
-    plan = call_llm_json(plan_prompt, max_tokens=2048)
+    traced_plan = call_llm_traced(plan_prompt, max_tokens=2048)
+    plan = traced_plan["json"]
     hypothesis = plan.get("hypothesis", "?")
     planned_steps = plan.get("steps", [])
     print(f"  Hypothesis: {hypothesis}")
     print(f"  Planned steps: {len(planned_steps)}")
     audit_steps.append({"name": "plan_run", "detail": f"hypothesis: {hypothesis}, {len(planned_steps)} steps planned"})
+    _plan_result = f"hypothesis: {hypothesis!r}, {len(planned_steps)} steps planned"
+    mem_lib.log_step(dataset_id, ACTION_CODE, ACTION, "plan", traced_plan["reasoning"], _plan_result)
+    cot_log.append(("plan", traced_plan["reasoning"]))
 
     # 5. Execute steps
     step_log = []  # for state.json
@@ -322,7 +330,8 @@ def run_once(dataset_id: str, max_steps: int = MAX_STEPS_PER_RUN) -> dict:
             eda_profile=format_profile(current_profile),
             human_notes=human_notes or "_(none)_",
         )
-        proposal = call_llm_json(step_prompt, max_tokens=2048)
+        traced_step = call_llm_traced(step_prompt, max_tokens=2048)
+        proposal = traced_step["json"]
         step_code = proposal.get("code", "")
         step_name = proposal.get("step_name", f"step_{step_num:02d}")
         step_desc = proposal.get("description", "")
@@ -331,6 +340,9 @@ def run_once(dataset_id: str, max_steps: int = MAX_STEPS_PER_RUN) -> dict:
         # Execute
         df_after, exec_result, func_name = execute_step(df, step_code, step_num)
         print(f"    -> {exec_result}")
+        _step_label = f"{func_name or step_name} ({step_desc[:60]})"
+        mem_lib.log_step(dataset_id, ACTION_CODE, ACTION, _step_label, traced_step["reasoning"], exec_result)
+        cot_log.append((_step_label, traced_step["reasoning"]))
 
         if "FAILED" in exec_result:
             audit_steps.append({"name": f"step_{step_num:02d}", "detail": f"FAILED: {step_desc} | {exec_result}"})
@@ -394,32 +406,28 @@ def run_once(dataset_id: str, max_steps: int = MAX_STEPS_PER_RUN) -> dict:
         chain_summary=chain_summary,
         human_notes=human_notes or "_(none)_",
     )
-    evaluation = call_llm_json(eval_prompt, max_tokens=1024)
+    traced_eval = call_llm_traced(eval_prompt, max_tokens=1024)
+    evaluation = traced_eval["json"]
     print(f"  Verdict: {evaluation['verdict']}")
     audit_steps.append({"name": "evaluate_run", "detail": f"{evaluation['verdict']}: {evaluation.get('reason', '')[:80]}"})
+    _eval_result = f"verdict: {evaluation['verdict']} — {evaluation.get('reason', '')[:120]}"
+    mem_lib.log_step(dataset_id, ACTION_CODE, ACTION, "eval", traced_eval["reasoning"], _eval_result)
+    cot_log.append(("eval", traced_eval["reasoning"]))
 
     # 9. Record in DB
     combined = {**plan, **evaluation, "steps_executed": steps_executed, "step_log": step_log}
-    conn.execute(
-        """INSERT INTO runs
-           (id, dataset_id, action, action_code, agent, status, finished_at,
-            prompt_template, llm_response, verdict, verdict_reason, artifact_paths)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
-        (
-            run_id, dataset_id, ACTION, ACTION_CODE, "deep_analyst", "done",
-            datetime.now(timezone.utc).isoformat(),
-            f"research-{ACTION_CODE}-{ACTION}-plan+step+eval",
-            json.dumps(combined),
-            evaluation["verdict"],
-            evaluation.get("reason", ""),
-            json.dumps([
-                f"artifacts/{dataset_id}/{PHASE_DIR}/run-{run_id}/artifact.md",
-                f"artifacts/{dataset_id}/{PHASE_DIR}/pipeline.py",
-            ]),
-        ),
+    ctx.finish(
+        verdict=evaluation["verdict"],
+        verdict_reason=evaluation.get("reason", ""),
+        llm_response=json.dumps(combined),
+        artifact_paths=[
+            f"artifacts/{dataset_id}/{PHASE_DIR}/run-{run_id}/artifact.md",
+            f"artifacts/{dataset_id}/{PHASE_DIR}/pipeline.py",
+        ],
+        prompt_template=f"research-{ACTION_CODE}-{ACTION}-plan+step+eval",
     )
     conn.commit()
-    conn.close()
+    ctx.close()
 
     # 10. Write artifact into run dir
     artifact_path = write_run_artifact(
@@ -460,6 +468,8 @@ def run_once(dataset_id: str, max_steps: int = MAX_STEPS_PER_RUN) -> dict:
             ),
             code_cells=[],
         )
+        for _cot_name, _cot_text in cot_log:
+            nb_lib.add_cot_cell(nb, _cot_name, _cot_text)
         nb_lib.save(nb, dataset_id)
     except Exception as e:
         import traceback; traceback.print_exc(); print(f"  Notebook write failed: {e}")

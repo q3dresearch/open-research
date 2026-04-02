@@ -37,12 +37,16 @@ Schema quality gate. LLM judges dataset metadata + 500-row EDA profile.
 ```json
 {
   "verdict": "pass | fail",
+  "pipeline_type": "transactional | aggregate | reference",
   "score": 8,
   "reason": "...",
   "research_angles": ["..."],
-  "concerns": ["..."]
+  "concerns": ["..."],
+  "join_keys": ["..."]
 }
 ```
+
+`pipeline_type` determines which phases run downstream. See [Pipeline Types](reference/pipeline-types.md).
 
 ---
 
@@ -130,9 +134,11 @@ Multi-view regime discovery. Three methods see different shapes of structure:
 
 **Quality gates** to pass:
 
-- [ ] Silhouette > 0.3
-- [ ] No cluster < 5% of data
-- [ ] At least one feature with slope p < 0.05
+- Silhouette ≥ 0.3
+- No cluster < 5% of data
+- At least one feature with significant slope difference (p < 0.05)
+
+`cluster_label` is saved as a categorical string (`"C0"`, `"C1"`, …) so downstream OLS does not treat it as numeric/ordinal.
 
 ---
 
@@ -177,5 +183,16 @@ Publication-ready report with OLS + LightGBM modeling.
 - Interaction plot (top numeric × top categorical)
 - LightGBM feature importance
 - SHAP dependence plot (top feature)
+
+**Also produces** `50-report/glossary.json` — column lineage assembled from all pipeline artifacts:
+
+| Field | Source |
+|-------|--------|
+| `column` | Dataset columns present at report time |
+| `origin` | Metadata API (raw) or phase that introduced the column |
+| `how` | Step docstring from `clean_pipeline.py` or `pipeline.py` |
+| `intuition` | Why the feature was created |
+| `selection_outcome` | `kept`, `dropped`, or `Track B` |
+| `selection_reason` | Reason from `feature_report.json` |
 
 **Replay chain**: raw → `clean_pipeline.py` → `pipeline.py` → `cluster_labels.csv` → modeling

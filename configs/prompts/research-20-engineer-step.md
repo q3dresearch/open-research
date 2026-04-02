@@ -46,5 +46,6 @@ def step_NN_short_name(df: pd.DataFrame) -> pd.DataFrame:
 Rules:
 - Only use pandas, numpy, re, math (standard library)
 - Add new columns, don't drop originals
-- Handle errors with try/except
+- **Never wrap step logic in try/except** — let exceptions propagate so the pipeline runner can catch them and report the failure clearly. Silent swallowing causes downstream steps to silently compute wrong values.
+- If an operation might fail (e.g., `.transform(['mean', 'std'])` on grouped data), write defensive logic without try/except: check dtypes, use `.agg()` + `.merge()` instead of `.transform()` when combining aggregations, avoid passing lists to `.transform()` (use separate calls instead).
 - The function name must start with `step_` followed by the step number (next in sequence)

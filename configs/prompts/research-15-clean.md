@@ -55,6 +55,8 @@ Rules:
 - Each step must be a standalone function: `def step_NN_name(df) -> df`
 - Steps must be idempotent — running twice on the same df produces the same result
 - For string-parsing steps (dates, durations, lease strings): always guard with `isinstance(val, str)` before applying regex. The column may already be numeric if the pipeline is replayed on a pre-cleaned df. Example: `if not isinstance(val, str): return float(val) if pd.notna(val) else np.nan`
+- After any row-destructive operation (`drop_duplicates()`, `dropna()`, boolean masking that returns a subset), call `.copy()` immediately: `df = df.drop_duplicates().copy()`. This prevents SettingWithCopyWarning on all subsequent column assignments.
+- **Never wrap step logic in try/except** — let exceptions propagate. The pipeline runner catches failures per-step and reports them clearly.
 - Never drop rows unless missingness is extreme (>90% in that row)
 - Prefer flagging over removing — let downstream phases decide
 - Output df must have the same or fewer columns (no new feature columns)

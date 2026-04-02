@@ -31,3 +31,12 @@ Thumbs.db
 
 # ── Jupyter ──────────────────────────────────────────────────────────────────
 .ipynb_checkpoints/
+
+# ── Docs build output ─────────────────────────────────────────────────────────
+site/
+
+# ── Memory — per-dataset journals are local/runtime ───────────────────────────
+# memory/main/ is committed (identity files: SOUL.md, AGENTS.md, TOOLS.md)
+memory/*
+!memory/main
+!memory/main/**

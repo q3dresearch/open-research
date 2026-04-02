@@ -22,6 +22,7 @@ CREATE TABLE IF NOT EXISTS datasets (
     schema_shape TEXT,       -- JSON: [{name, type, description}, ...]
     format TEXT,             -- csv, json, xlsx
     row_count INTEGER,
+    pipeline_type TEXT DEFAULT 'transactional',  -- transactional | aggregate | reference  (see docs/reference/pipeline-types.md)
     update_frequency TEXT,   -- daily, weekly, monthly, irregular, unknown
     max_action_code TEXT DEFAULT '00',  -- highest completed phase code
     cron_actions TEXT DEFAULT '[]',     -- JSON array of action names
@@ -88,4 +89,26 @@ CREATE TABLE IF NOT EXISTS schema_embeddings (
     text_input TEXT,
     model TEXT,
     created_at TEXT DEFAULT (datetime('now'))
+);
+
+CREATE TABLE IF NOT EXISTS scan_catalog (
+    id TEXT PRIMARY KEY,
+    portal_id TEXT NOT NULL,
+    name TEXT,
+    description TEXT,
+    format TEXT,           -- CSV | GEOJSON | KML | SHP | XLSX | ...
+    size_bytes INTEGER,
+    column_count INTEGER,
+    status TEXT DEFAULT 'pending',  -- pending | vetted | skipped
+    skip_reason TEXT,               -- too_small=N | (blank = large enough CSV, pending vet)
+    discovered_at TEXT DEFAULT (datetime('now')),
+    vetted_at TEXT
+);
+
+CREATE TABLE IF NOT EXISTS scan_progress (
+    portal_id TEXT NOT NULL,
+    page INTEGER NOT NULL,
+    scanned_at TEXT DEFAULT (datetime('now')),
+    datasets_found INTEGER DEFAULT 0,
+    PRIMARY KEY (portal_id, page)
 );

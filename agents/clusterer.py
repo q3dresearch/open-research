@@ -30,7 +30,7 @@ import pandas as pd
 import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
-from lib.db import get_conn, make_run_id
+from lib.db import RunContext
 from lib.ckan import fetch_metadata, DATA_DIR
 from lib.eda import basic_profile, format_profile
 from lib.eda.clustering import (
@@ -418,8 +418,9 @@ def format_views_for_prompt(views: list[dict]) -> tuple[str, str]:
 def run_cluster(dataset_id: str, target_col: str | None = None) -> dict:
     """Run the full clustering pipeline."""
     audit_steps = []
-    conn = get_conn()
-    run_id = make_run_id()
+    ctx = RunContext(dataset_id, ACTION, ACTION_CODE, "clusterer")
+    conn = ctx.conn
+    run_id = ctx.run_id
 
     # 1. Prerequisites
     ds = conn.execute("SELECT * FROM datasets WHERE id = ?", (dataset_id,)).fetchone()
@@ -491,13 +492,16 @@ def run_cluster(dataset_id: str, target_col: str | None = None) -> dict:
         quality_report = cluster_quality_report(
             df.loc[non_noise], best_labels[best_labels >= 0],
             target_col, cluster_features,
+            silhouette=best_view["silhouette"],
         )
         n_regime = quality_report["n_regime_features"]
+        sil = best_view["silhouette"]
+        sil_flag = "" if sil >= 0.3 else f" ⚠ silhouette={sil:.3f}<0.3"
         print(f"  Quality: {quality_report['verdict']}, "
               f"{n_regime}/{quality_report['n_features_tested']} regime features, "
-              f"ANOVA p={quality_report['anova']['p_value']}")
+              f"ANOVA p={quality_report['anova']['p_value']}{sil_flag}")
         audit_steps.append({"name": "quality_report",
-                             "detail": f"{quality_report['verdict']}: {n_regime} regime features"})
+                             "detail": f"{quality_report['verdict']}: {n_regime} regime features, sil={sil:.3f}"})
 
     # 7. Charts
     run_dir = get_run_dir(dataset_id, run_id)
@@ -561,10 +565,17 @@ def run_cluster(dataset_id: str, target_col: str | None = None) -> dict:
         label_path = get_phase_dir(dataset_id) / "cluster_labels.csv"
         # Save with df's actual index so downstream can join correctly
         # even if row counts differ by ±1 due to non-deterministic deduplication
-        label_df = pd.DataFrame({"cluster_label": best_labels}, index=df.index)
+        # Save cluster_label as string ("C0", "C1", ...) so it loads as object dtype.
+        # Integer labels would be treated as numeric by statsmodels OLS and sklearn,
+        # implying a false ordinal relationship between clusters.
         name_map = llm_review.get("cluster_names", {})
+        str_labels = [
+            name_map.get(str(lbl), f"C{lbl}") if name_map else f"C{lbl}"
+            for lbl in best_labels
+        ]
+        label_df = pd.DataFrame({"cluster_label": str_labels}, index=df.index)
         if name_map:
-            label_df["cluster_name"] = label_df["cluster_label"].astype(str).map(name_map)
+            label_df["cluster_name"] = label_df["cluster_label"]
         label_df.to_csv(label_path, index=True)  # index=True saves the df index
         print(f"  Saved cluster labels: {label_path}")
 
@@ -585,26 +596,18 @@ def run_cluster(dataset_id: str, target_col: str | None = None) -> dict:
 
     # 10. Record in DB
     combined = {**llm_review, "quality_report": quality_report}
-    conn.execute(
-        """INSERT INTO runs
-           (id, dataset_id, action, action_code, agent, status, finished_at,
-            prompt_template, llm_response, verdict, verdict_reason, artifact_paths)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
-        (
-            run_id, dataset_id, ACTION, ACTION_CODE, "clusterer", "done",
-            datetime.now(timezone.utc).isoformat(),
-            PROMPT_NAME,
-            json.dumps(combined, default=str),
-            llm_review.get("verdict", "unknown"),
-            llm_review.get("reason", ""),
-            json.dumps([
-                f"artifacts/{dataset_id}/{PHASE_DIR}/run-{run_id}/cluster_report.json",
-                f"artifacts/{dataset_id}/{PHASE_DIR}/cluster_labels.csv",
-            ]),
-        ),
+    ctx.finish(
+        verdict=llm_review.get("verdict", "unknown"),
+        verdict_reason=llm_review.get("reason", ""),
+        llm_response=json.dumps(combined, default=str),
+        artifact_paths=[
+            f"artifacts/{dataset_id}/{PHASE_DIR}/run-{run_id}/cluster_report.json",
+            f"artifacts/{dataset_id}/{PHASE_DIR}/cluster_labels.csv",
+        ],
+        prompt_template=PROMPT_NAME,
     )
     conn.commit()
-    conn.close()
+    ctx.close()
 
     # 11. Write artifact
     artifact_path = write_run_artifact(

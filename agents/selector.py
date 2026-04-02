@@ -30,7 +30,7 @@ import numpy as np
 import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
-from lib.db import get_conn, make_run_id
+from lib.db import RunContext
 from lib.ckan import fetch_metadata, DATA_DIR
 from lib.eda import basic_profile, format_profile
 from lib.eda.selection import run_selection_pipeline, SelectionReport
@@ -400,8 +400,9 @@ def select_features(dataset_id: str, target_col: str | None = None,
                      run_shap: bool = True) -> dict:
     """Run the full feature selection pipeline."""
     steps = []
-    conn = get_conn()
-    run_id = make_run_id()
+    ctx = RunContext(dataset_id, ACTION, ACTION_CODE, "selector")
+    conn = ctx.conn
+    run_id = ctx.run_id
 
     # 1. Prerequisites
     ds = conn.execute("SELECT * FROM datasets WHERE id = ?", (dataset_id,)).fetchone()
@@ -512,26 +513,18 @@ def select_features(dataset_id: str, target_col: str | None = None,
 
     # 7. Record in DB
     combined = {**llm_review, "selection_stages": report.stage_summaries}
-    conn.execute(
-        """INSERT INTO runs
-           (id, dataset_id, action, action_code, agent, status, finished_at,
-            prompt_template, llm_response, verdict, verdict_reason, artifact_paths)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
-        (
-            run_id, dataset_id, ACTION, ACTION_CODE, "selector", "done",
-            datetime.now(timezone.utc).isoformat(),
-            PROMPT_NAME,
-            json.dumps(combined),
-            llm_review.get("verdict", "unknown"),
-            llm_review.get("reason", ""),
-            json.dumps([
-                f"artifacts/{dataset_id}/{PHASE_DIR}/run-{run_id}/feature_report.json",
-                f"artifacts/{dataset_id}/{PHASE_DIR}/run-{run_id}/{ACTION_CODE}-{ACTION}-{run_id}.md",
-            ]),
-        ),
+    ctx.finish(
+        verdict=llm_review.get("verdict", "unknown"),
+        verdict_reason=llm_review.get("reason", ""),
+        llm_response=json.dumps(combined),
+        artifact_paths=[
+            f"artifacts/{dataset_id}/{PHASE_DIR}/run-{run_id}/feature_report.json",
+            f"artifacts/{dataset_id}/{PHASE_DIR}/run-{run_id}/{ACTION_CODE}-{ACTION}-{run_id}.md",
+        ],
+        prompt_template=PROMPT_NAME,
     )
     conn.commit()
-    conn.close()
+    ctx.close()
 
     # 8. Write artifact into run dir
     artifact_path = write_run_artifact(

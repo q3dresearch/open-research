@@ -72,11 +72,11 @@ Use the exact relative paths provided in the chart descriptions below.
 Do NOT use italic text or just filenames — render the actual image.
 
 ## Visual Evidence
-Group remaining charts by theme, each as inline image:
-- Trends: `![caption](path)`
-- Distributions: `![caption](path)`
-- Relationships: `![caption](path)`
-- Segmentation: `![caption](path)`
+Group remaining charts by theme, each as inline image. Do NOT wrap in backticks:
+- Trends: ![caption](path)
+- Distributions: ![caption](path)
+- Relationships: ![caption](path)
+- Segmentation: ![caption](path)
 
 ## Model Results
 This section presents Tier 2 (conditional) analytics. Include ALL model charts as inline images.
@@ -139,7 +139,7 @@ Max 2-5 sample records per step. Total audit section must stay under 200 lines.
 Stage-by-stage decisions (from feature_report.json).
 
 IMPORTANT: You MUST include ALL selection charts as inline images here.
-Each stage chart shows the decision made at that stage. Include them as:
+Each stage chart shows the decision made at that stage. Include them as bare markdown images — NO backticks:
 ![caption](path)
 
 Include the pipeline waterfall and correlation survivors charts too.

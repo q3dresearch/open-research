@@ -4,3 +4,8 @@ portals:
     name: Data.gov.sg
     api_type: ckan
     daily_budget_usd: 5.0
+    scanner:
+      min_size_bytes: 5000          # under 5KB = effectively empty, skip entirely
+      max_size_bytes: 524288000     # over 500MB = too large to pipeline, skip
+      pages_per_run: 20             # pages scanned per cron invocation
+      page_ceiling: 600             # ~5000 datasets / 10 per page
