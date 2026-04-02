@@ -131,17 +131,16 @@ def vet_dataset(dataset_id: str) -> dict:
         "INSERT OR IGNORE INTO portals (id, url, name, api_type) VALUES (?, ?, ?, ?)",
         ("data-gov-sg", "https://data.gov.sg", "Data.gov.sg", "ckan"),
     )
-    pipeline_type = verdict.get("pipeline_type", "transactional")
     conn.execute(
         """INSERT OR REPLACE INTO datasets
            (id, portal_id, resource_url, title, description, schema_shape,
-            format, row_count, pipeline_type, update_frequency, max_action_code)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+            format, row_count, update_frequency, max_action_code)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
         (
             dataset_id, "data-gov-sg",
             f"https://data.gov.sg/datasets/{dataset_id}/view",
             meta["name"], meta["description"], json.dumps(meta["columns"]),
-            meta["format"], total, pipeline_type,
+            meta["format"], total,
             collection["frequency"] if collection else "unknown",
             ACTION_CODE,
         ),
@@ -158,7 +157,7 @@ def vet_dataset(dataset_id: str) -> dict:
 
     if verdict["verdict"] == "fail":
         conn.execute(
-            "UPDATE datasets SET rejected = 1, rejected_at_action = ?, reject_reason = ? WHERE id = ?",
+            "UPDATE datasets SET rejected = 1, rejected_at = ?, reject_reason = ? WHERE id = ?",
             (ACTION, verdict["reason"], dataset_id),
         )
 
@@ -216,7 +215,7 @@ def main():
     verdict = vet_dataset(dataset_id)
     print(f"\n=== Schema Vet Complete ===")
     print(f"Verdict:  {verdict['verdict']} ({verdict['score']}/10)")
-    print(f"Type:     {verdict.get('pipeline_type', 'transactional')}")
+    print(f"Archetype: {verdict.get('pipeline_type', '(unknown — set by EDA)')}")
     print(f"Reason:   {verdict['reason']}")
 
 

@@ -30,7 +30,7 @@ import pandas as pd
 import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
-from lib.db import RunContext
+from lib.db import RunContext, init_db
 from lib.ckan import fetch_metadata, DATA_DIR
 from lib.eda import basic_profile, format_profile
 from lib.eda.clustering import (
@@ -142,7 +142,7 @@ def resolve_target(dataset_id: str, cli_target: str | None,
                     return t
 
     # 4. Prior engineer runs (LLM may have mentioned target in response)
-    conn = get_conn()
+    conn = init_db()
     row = conn.execute(
         """SELECT llm_response FROM runs
            WHERE dataset_id = ? AND action = 'eda'

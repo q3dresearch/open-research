@@ -334,7 +334,7 @@ def build_dataset_overview(meta: dict, state: dict | None) -> str:
         f"Title: {meta['name']}",
         f"Publisher: {meta.get('managed_by', '?')}",
         f"Format: {meta.get('format', '?')}",
-        f"Coverage: {meta.get('coverage_start', '?')[:10]} → {meta.get('coverage_end', '?')[:10]}",
+        f"Coverage: {(meta.get('coverage_start') or '?')[:10]} → {(meta.get('coverage_end') or '?')[:10]}",
     ]
     if meta.get("description"):
         lines.append(f"Description: {meta['description'][:300]}")

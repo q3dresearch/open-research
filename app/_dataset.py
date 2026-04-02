@@ -107,7 +107,7 @@ def load_datasets():
     conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row
     rows = conn.execute(
-        "SELECT id, title, row_count, max_action_code, updated_at, pipeline_type "
+        "SELECT id, title, row_count, max_action_code, updated_at, dataset_archetype, research_mode "
         "FROM datasets WHERE rejected = 0 ORDER BY updated_at DESC"
     ).fetchall()
     conn.close()
@@ -304,11 +304,16 @@ with st.sidebar:
     if selected_id:
         match = next((d for d in datasets if d["id"] == selected_id), None)
         if match:
-            ptype = match.get("pipeline_type") or "transactional"
-            ptype_color = {"transactional": "🟢", "aggregate": "🟡", "reference": "🔵"}.get(ptype, "⚪")
+            archetype = match.get("dataset_archetype") or "unknown"
+            mode = match.get("research_mode") or "predictive"
+            arch_color = {
+                "transactional": "🟢", "panel": "🟢", "time_series": "🔵",
+                "aggregate_pivot": "🟡", "aggregate_summary": "🟡",
+                "cross_section": "🔵", "reference": "⚫", "geospatial": "🟣",
+            }.get(archetype, "⚪")
             st.caption(
                 f"**{match['row_count']:,}** rows · updated {match['updated_at'][:10]}\n\n"
-                f"{ptype_color} `{ptype}`"
+                f"{arch_color} `{archetype}` · `{mode}`"
             )
 
     st.divider()

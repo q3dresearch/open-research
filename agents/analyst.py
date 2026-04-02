@@ -80,7 +80,7 @@ def analyze_dataset(dataset_id: str, sample_limit: int = 5000) -> dict:
     if not ds:
         raise RuntimeError(f"Dataset {dataset_id} not found. Run vetter first.")
     if ds["rejected"]:
-        raise RuntimeError(f"Dataset {dataset_id} was rejected at {ds['rejected_at_action']}.")
+        raise RuntimeError(f"Dataset {dataset_id} was rejected at {ds['rejected_at']}.")
 
     # 2. Load prior vet context
     prev_vet = get_previous_vet(conn, dataset_id)
@@ -203,7 +203,7 @@ def analyze_dataset(dataset_id: str, sample_limit: int = 5000) -> dict:
         print(f"  -> Promoted to engineer ({next_code})")
     elif analysis["verdict"] == "reject":
         conn.execute(
-            "UPDATE datasets SET rejected = 1, rejected_at_action = ?, reject_reason = ? WHERE id = ?",
+            "UPDATE datasets SET rejected = 1, rejected_at = ?, reject_reason = ? WHERE id = ?",
             (ACTION, analysis["reason"], dataset_id),
         )
 

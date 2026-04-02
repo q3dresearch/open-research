@@ -1,5 +1,6 @@
 -- observatory.db schema
--- Source of truth: blueprint/02-schema.md
+-- Source of truth for table structure.
+-- Additive migrations for existing DBs are handled by lib/db._migrate().
 
 CREATE TABLE IF NOT EXISTS portals (
     id TEXT PRIMARY KEY,
@@ -19,17 +20,22 @@ CREATE TABLE IF NOT EXISTS datasets (
     resource_url TEXT,
     title TEXT,
     description TEXT,
-    schema_shape TEXT,       -- JSON: [{name, type, description}, ...]
-    format TEXT,             -- csv, json, xlsx
+    schema_shape TEXT,          -- JSON: [{name, type, description}, ...]
+    format TEXT,                -- csv, json, xlsx
     row_count INTEGER,
-    pipeline_type TEXT DEFAULT 'transactional',  -- transactional | aggregate | reference  (see docs/reference/pipeline-types.md)
-    update_frequency TEXT,   -- daily, weekly, monthly, irregular, unknown
-    max_action_code TEXT DEFAULT '00',  -- highest completed phase code
-    cron_actions TEXT DEFAULT '[]',     -- JSON array of action names
+    dataset_archetype TEXT DEFAULT 'unknown',
+        -- transactional | panel | time_series | aggregate_pivot |
+        -- aggregate_summary | cross_section | reference | geospatial | unknown
+        -- Set authoritatively by EDA (phase 10) from full profile.
+    research_mode TEXT DEFAULT 'predictive',
+        -- predictive | descriptive | diagnostic | prescriptive
+        -- Derived from dataset_archetype + EDA signals. Drives pipeline routing.
+    update_frequency TEXT,      -- daily, weekly, monthly, irregular, unknown
+    max_action_code TEXT DEFAULT '00',   -- highest completed phase code
+    cron_actions TEXT DEFAULT '[]',      -- JSON array of action names
     rejected INTEGER DEFAULT 0,
-    rejected_at_action TEXT,            -- action name where rejected
+    rejected_at TEXT,           -- action name where rejection was recorded (e.g. 'vet', 'eda')
     reject_reason TEXT,
-    human_notes TEXT,
     last_run_at TEXT,
     created_at TEXT DEFAULT (datetime('now')),
     updated_at TEXT DEFAULT (datetime('now'))
@@ -38,24 +44,17 @@ CREATE TABLE IF NOT EXISTS datasets (
 CREATE TABLE IF NOT EXISTS runs (
     id TEXT PRIMARY KEY,
     dataset_id TEXT NOT NULL,
-    entity_type TEXT DEFAULT 'dataset',
-    action TEXT NOT NULL,         -- semantic name: vet, eda, clean, engineer, cluster, select, report
-    action_code TEXT NOT NULL,    -- sortable code: 00, 10, 15, 20, 25, 30, 50
+    action TEXT NOT NULL,       -- semantic name: vet, eda, clean, engineer, cluster, select, report
+    action_code TEXT NOT NULL,  -- sortable code: 00, 10, 15, 20, 25, 30, 50
     agent TEXT,
     status TEXT DEFAULT 'running',
     started_at TEXT DEFAULT (datetime('now')),
     finished_at TEXT,
     prompt_template TEXT,
-    llm_input TEXT,
-    llm_response TEXT,
+    llm_response TEXT,          -- full JSON from LLM (verdict + all fields)
     verdict TEXT,
     verdict_reason TEXT,
-    artifact_paths TEXT,     -- JSON array of file paths
-    metrics TEXT,            -- JSON object
-    code_version TEXT,
-    cost_estimate_usd REAL,
-    human_review TEXT,
-    human_verdict_override TEXT
+    artifact_paths TEXT         -- JSON array of relative artifact file paths
 );
 
 CREATE TABLE IF NOT EXISTS proposed_joins (
@@ -100,7 +99,7 @@ CREATE TABLE IF NOT EXISTS scan_catalog (
     size_bytes INTEGER,
     column_count INTEGER,
     status TEXT DEFAULT 'pending',  -- pending | vetted | skipped
-    skip_reason TEXT,               -- too_small=N | (blank = large enough CSV, pending vet)
+    skip_reason TEXT,
     discovered_at TEXT DEFAULT (datetime('now')),
     vetted_at TEXT
 );

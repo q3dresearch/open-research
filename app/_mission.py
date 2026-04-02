@@ -32,7 +32,7 @@ def load_mission_data():
     conn = init_db()
     rows = conn.execute(
         """
-        SELECT d.id, d.title, d.pipeline_type, d.max_action_code,
+        SELECT d.id, d.title, d.dataset_archetype, d.research_mode, d.max_action_code,
                d.rejected, d.row_count, d.updated_at,
                d.reject_reason,
                (SELECT COUNT(*) FROM runs r WHERE r.dataset_id = d.id) AS run_count
@@ -98,11 +98,12 @@ fc1, fc2, fc3, fc4 = st.columns([2, 2, 2, 3])
 
 with fc1:
     type_filter = st.multiselect(
-        "Pipeline type",
-        ["transactional", "aggregate", "reference"],
+        "Archetype",
+        ["transactional", "panel", "time_series", "aggregate_pivot",
+         "aggregate_summary", "cross_section", "reference", "geospatial", "unknown"],
         default=[],
         label_visibility="collapsed",
-        placeholder="All types",
+        placeholder="All archetypes",
     )
 with fc2:
     phase_filter = st.multiselect(
@@ -125,7 +126,7 @@ with fc4:
 # Apply filters
 filtered = rows
 if type_filter:
-    filtered = [r for r in filtered if r["pipeline_type"] in type_filter]
+    filtered = [r for r in filtered if r["dataset_archetype"] in type_filter]
 if phase_filter:
     filtered = [r for r in filtered if _phase_label(r["max_action_code"], bool(r["rejected"])) in phase_filter]
 if status_filter == "Active":
@@ -161,7 +162,7 @@ if not page_rows:
 df_display = pd.DataFrame([
     {
         "Title": (r["title"] or r["id"])[:55],
-        "Type": r["pipeline_type"] or "—",
+        "Type": r["dataset_archetype"] or "—",
         "Phase": _phase_label(r["max_action_code"], bool(r["rejected"])),
         "Progress": _phase_bar(r["max_action_code"], bool(r["rejected"])),
         "Rows": f"{r['row_count']:,}" if r["row_count"] else "—",
@@ -201,7 +202,7 @@ if selected_rows:
 
     col_a, col_b, col_c = st.columns(3)
     col_a.metric("Dataset ID", selected_id)
-    col_b.metric("Pipeline type", row["pipeline_type"] or "—")
+    col_b.metric("Archetype", row["dataset_archetype"] or "unknown")
     col_c.metric("Rows", f"{row['row_count']:,}" if row["row_count"] else "—")
 
     if row["rejected"]:
